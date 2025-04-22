@@ -40,6 +40,34 @@ pipeline {
       }
     }
     // you can add back your Update ECS Service here once it's working
+    stage('Update ECS Service') {
+  steps {
+    script {
+      // grab the most recent revision of our family
+      def taskDefArn = sh(
+        script: """
+          aws ecs list-task-definitions \\
+            --family-prefix webapp-task \\
+            --sort DESC \\
+            --max-items 1 \\
+            --query 'taskDefinitionArns[0]' \\
+            --output text
+        """,
+        returnStdout: true
+      ).trim()
+      echo "Updating ECS service to use task definition ${taskDefArn}"
+
+      // now push the update
+      sh """
+        aws ecs update-service \\
+          --cluster ${env.ECS_CLUSTER_NAME} \\
+          --service ${env.ECS_SERVICE_NAME} \\
+          --task-definition ${taskDefArn}
+      """
+    }
+  }
+}
+
   }
   post {
     success { echo '✅ Done!' }
